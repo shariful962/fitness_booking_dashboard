@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { FiEye, FiEyeOff } from "react-icons/fi";
@@ -30,7 +29,12 @@ const Signin = () => {
 
     setFormData({
       ...formData,
-      [name]: type === "checkbox" || type === "radio" ? checked ? value : formData[name] : value,
+      [name]:
+        type === "checkbox" || type === "radio"
+          ? checked
+            ? value
+            : formData[name]
+          : value,
     });
   };
 
@@ -64,26 +68,23 @@ const Signin = () => {
     // =========================================
     // SELECT ENDPOINT BASED ON ROLE
     // =========================================
-    const endpoint = formData.role === "root_admin" 
-      ? ENDPOINTS.admin_login 
-      : ENDPOINTS.sub_admin_login;
+    const endpoint =
+      formData.role === "root_admin"
+        ? ENDPOINTS.admin_login
+        : ENDPOINTS.sub_admin_login;
 
     try {
       // API Call
-      const response = await baseApi.post(
-        endpoint,
-        {
-          email: formData.email,
-          password: formData.password,
-        }
-      );
+      const response = await baseApi.post(endpoint, {
+        email: formData.email,
+        password: formData.password,
+      });
 
       // =========================================
       // LOGIN SUCCESSFUL
       // =========================================
       console.log("Login Successful:", response.data);
-      toast.success("Login successful! Redirecting...");
-
+      toast.success("Login successful!");
 
       // Save User Data
       localStorage.setItem("user", JSON.stringify(response.data.user));
@@ -101,7 +102,6 @@ const Signin = () => {
       } else {
         navigate("/user");
       }
-
     } catch (error) {
       // =========================================
       // LOGIN FAILED
@@ -111,12 +111,13 @@ const Signin = () => {
       // Backend থেকে error message নিতে পারেন
       if (error.response) {
         // Server responded with error
-        const errorMsg = error.response.data?.errors?.non_field_errors?.[0] || 
-                        error.response.data?.detail || 
-                        error.response.data?.message || 
-                        "Invalid email or password!";
+        const errorMsg =
+          error.response.data?.errors?.non_field_errors?.[0] ||
+          error.response.data?.detail ||
+          error.response.data?.message ||
+          "Invalid email or password!";
         setErrorMessage(errorMsg);
-        toast.error(errorMsg);
+        // toast.error(errorMsg);
       } else if (error.request) {
         // Request made but no response
         const fallbackMsg = "Network error! Please check your connection.";
@@ -135,9 +136,7 @@ const Signin = () => {
 
   return (
     <div className="flex items-center justify-center h-screen">
-
       <div className="w-full max-w-[691px] mx-auto px-4">
-
         {/* Logo */}
         <div className="text-center space-y-8 mb-6">
           <img
@@ -149,12 +148,9 @@ const Signin = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
-
           {/* Email */}
           <div className="mb-6">
-            <label className="label-control">
-              Email
-            </label>
+            <label className="label-control">Email</label>
 
             <input
               type="email"
@@ -169,10 +165,7 @@ const Signin = () => {
 
           {/* Password */}
           <div className="relative mb-2">
-
-            <label className="label-control">
-              Password
-            </label>
+            <label className="label-control">Password</label>
 
             <input
               type={showPassword ? "text" : "password"}
@@ -190,19 +183,13 @@ const Signin = () => {
               className="absolute right-3 top-[50px] text-gray-400 cursor-pointer"
               disabled={loading}
             >
-              {showPassword ? (
-                <FiEyeOff size={20} />
-              ) : (
-                <FiEye size={20} />
-              )}
+              {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </button>
           </div>
 
           {/* Remember Me and Forgot Password */}
           <div className="flex justify-between items-center mt-2">
-
             <label className="flex items-center text-sm text-gray-600 cursor-pointer">
-
               <input
                 type="checkbox"
                 name="rememberMe"
@@ -211,7 +198,6 @@ const Signin = () => {
                 className="mr-2"
                 disabled={loading}
               />
-
               Remember Me
             </label>
 
@@ -227,9 +213,7 @@ const Signin = () => {
 
           {/* Role Selection - Radio Buttons */}
           <div className="mt-3">
-            <label className="label-control mb-3 block">
-              Login As
-            </label>
+            <label className="label-control mb-3 block">Login As</label>
 
             <div className="flex items-center gap-6">
               <label className="flex items-center cursor-pointer">
@@ -262,7 +246,6 @@ const Signin = () => {
 
           {/* Submit */}
           <div className="text-center mt-4">
-
             <button
               type="submit"
               disabled={loading}
@@ -297,18 +280,14 @@ const Signin = () => {
                 "Sign In"
               )}
             </button>
-
           </div>
 
           {/* Error */}
           {errorMessage && (
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-500 text-sm text-center">
-                {errorMessage}
-              </p>
+              <p className="text-red-500 text-sm text-center">{errorMessage}</p>
             </div>
           )}
-
         </form>
       </div>
     </div>

@@ -1,8 +1,6 @@
-
-
 import React, { useState } from "react";
 
-const ForgotPassword = ({ email, setEmail, onSubmit }) => {
+const ForgotPassword = ({ email, setEmail, onSubmit, loading, error }) => {
   const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = (e) => {
@@ -23,7 +21,8 @@ const ForgotPassword = ({ email, setEmail, onSubmit }) => {
           Forgot password
         </h1>
         <p className="text-lg text-textClr mt-3 mb-8">
-          Enter your email address to get a verification code for resetting your password.
+          Enter your email address to get a verification code for resetting your
+          password.
         </p>
         <form onSubmit={handleSubmit}>
           {/* email */}
@@ -36,26 +35,28 @@ const ForgotPassword = ({ email, setEmail, onSubmit }) => {
               onChange={(e) => setEmail(e.target.value)} // ✅ controlled by parent
               className="form-control"
               placeholder="abc@gmail.com"
+              disabled={loading}
             />
           </div>
-
-          {errorMessage && (
-            <p className="text-red-500 text-sm mt-2">{errorMessage}</p>
-          )}
 
           {/* Submit */}
           <div className="text-center mt-8">
             <button
               type="submit"
+              disabled={loading}
               className="w-full h-[50px] bg-gradient-to-r from-[#0B2D1E]/90 to-[#009A56]  
 text-white py-2 text-xl font-bold rounded-md 
 transition-all duration-300 cursor-pointer
 hover:from-[#0B2D1E] hover:to-[#009A56] 
 hover:scale-105 hover:shadow-lg"
             >
-              Send
+              {loading ? "Sending..." : "Send"}
             </button>
           </div>
+          {/* error message show */}
+          {(error || errorMessage) && (
+            <p className="text-red-500 text-sm mt-2">{error || errorMessage}</p>
+          )}
         </form>
       </div>
     </div>
