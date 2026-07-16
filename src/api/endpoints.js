@@ -6,4 +6,6 @@ export const ENDPOINTS = {
   verify_otp: "/accounts/user/reset-password-otp/", 
   reset_pass: "/accounts/user/set-new-password/", 
   profile: "/accounts/user/profile/", 
+  create_subAdmin: "/accounts/user/root-admin/create-sub-admin/", 
+  get_subAdmin: "/studios/authenticated-users/", 
 };
