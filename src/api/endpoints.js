@@ -4,5 +4,6 @@ export const ENDPOINTS = {
   sub_admin_login: "/accounts/user/sub-admin/login/",
   forgot_pass: "/accounts/user/send-reset-password-email/",
   verify_otp: "/accounts/user/reset-password-otp/", 
-  reset_pass: "/accounts/user/set-new-password/"
+  reset_pass: "/accounts/user/set-new-password/", 
+  profile: "/accounts/user/profile/", 
 };

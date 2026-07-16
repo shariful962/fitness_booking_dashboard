@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import axios from "axios";
@@ -6,6 +6,7 @@ import { Icons } from "../../lib/images";
 import { ENDPOINTS } from "../../api/endpoints";
 import { baseApi } from "../../api/baseApi";
 import { toast } from "react-toastify";
+import { AuthContext } from "../../context/AuthContext";
 
 const Signin = () => {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ const Signin = () => {
   const [loading, setLoading] = useState(false); // Loading state যোগ করলাম
 
   const navigate = useNavigate();
+  const { loginUser } = useContext(AuthContext);
 
   // =========================================
   // Handle Input Change
@@ -86,10 +88,8 @@ const Signin = () => {
       console.log("Login Successful:", response.data);
       toast.success("Login successful!");
 
-      // Save User Data
-      localStorage.setItem("user", JSON.stringify(response.data.user));
-      localStorage.setItem("access_token", response.data.access);
-      localStorage.setItem("refresh_token", response.data.refresh);
+      const loggedInUser = response?.data?.user;
+      loginUser(loggedInUser, response?.data?.access, response?.data?.refresh);
 
       // Remember Me functionality (optional)
       if (formData.rememberMe) {
@@ -97,7 +97,7 @@ const Signin = () => {
       }
 
       // Role অনুযায়ী redirect
-      if (formData.role === "root_admin") {
+      if (loggedInUser?.role === "root_admin") {
         navigate("/dashboard");
       } else {
         navigate("/user");

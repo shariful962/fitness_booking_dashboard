@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Outlet, Navigate } from "react-router";
 
 import Sidebar from "../components/sidebar/Sidebar";
 import Header from "../components/header/Header";
+import { AuthContext } from "../context/AuthContext";
 
 const Layout = () => {
 
@@ -17,8 +18,7 @@ const Layout = () => {
   // Logged In User
   // =========================================
 
-  const user =
-    JSON.parse(localStorage.getItem("user"));
+  const { user } = useContext(AuthContext);
 
   // =========================================
   // Not Logged In

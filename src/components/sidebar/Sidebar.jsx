@@ -131,11 +131,12 @@
 
 
 
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Icons } from "../../lib/images";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import { RxCross2 } from "react-icons/rx";
 import { CiLogout } from "react-icons/ci";
+import { AuthContext } from "../../context/AuthContext";
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
 
@@ -144,13 +145,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const [showLogoutModal, setShowLogoutModal] =
     useState(false);
-
-  // =========================================
-  // Logged In User
-  // =========================================
-
-  const user =
-    JSON.parse(localStorage.getItem("user"));
+  const { user, logoutUser } = useContext(AuthContext);
 
   // =========================================
   // Sidebar Links
@@ -227,9 +222,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   // =========================================
 
   const handleLogout = () => {
-
-    localStorage.removeItem("user");
-
+    logoutUser();
+    setShowLogoutModal(false);
     navigate("/signin");
   };
 
