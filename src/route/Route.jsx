@@ -47,6 +47,7 @@ import EditClass from "../pages/class management/EditClass";
 
 // Protected Route
 import ProtectedRoute from "./ProtectedRoute";
+import RootViewStudio from "../pages/studio management/RootViewStudio";
 
 export const router = createBrowserRouter([
   // =========================================
@@ -213,6 +214,21 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+          {
+        path: "studio/rootviewstudio",
+        element: (
+          <ProtectedRoute
+            allowedRoles={[
+              "root_admin",
+              
+            ]}
+          >
+            <RootViewStudio />
+          </ProtectedRoute>
+        ),
+      },
+      
+      
 
       {
         path: "studio/createstudio",
