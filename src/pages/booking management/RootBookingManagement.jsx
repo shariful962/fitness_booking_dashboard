@@ -33,6 +33,19 @@ const formatTime = (value) => {
   return `${formattedHour}:${minutes.padStart(2, "0")} ${suffix}`;
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
 const normalizeStatus = (value) => {
   if (!value) return "-";
   const text = String(value).toLowerCase();
@@ -166,7 +179,7 @@ const RootBookingManagement = () => {
                 <th className="py-3 px-5">User Name</th>
                 <th className="py-3 px-5">Studio Name</th>
                 <th className="py-3 px-5">Class Name</th>
-                <th className="py-3 px-5">Date & Time</th>
+                <th className="py-3 px-5">Class Time</th>
                 <th className="py-3 px-5">Credit Use</th>
                 <th className="py-3 px-5">Status</th>
                 <th className="py-3 px-5 text-center">Action</th>
@@ -198,7 +211,7 @@ const RootBookingManagement = () => {
                     key={index}
                     className="border-b border-gray-100 hover:bg-gray-50/50"
                   >
-                    <td className="py-3 px-5 text-gray-500">{booking.id}</td>
+                    <td className="py-3 px-5 text-gray-500">{startIndex + index + 1}</td>
 
                     <td className="py-3 px-5">
                       <div className="flex items-center gap-2.5">
@@ -281,7 +294,7 @@ const RootBookingManagement = () => {
             {/* Modal Body */}
             <div className="p-6">
               {/* Profile */}
-              <div className="flex flex-col items-center text-center mb-6">
+                <div className="flex flex-col items-center text-center mb-6">
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#e6f4ee] text-3xl font-semibold text-[#1b5e43] border-4 border-[#f4f7f5]">
                   {selectedBooking.name?.charAt(0).toUpperCase()}
                 </div>
@@ -291,7 +304,7 @@ const RootBookingManagement = () => {
                 </h3>
 
                 <p className="text-sm text-gray-400">
-                  {selectedBooking.id}
+                  {selectedBooking.email}
                 </p>
               </div>
 
@@ -322,6 +335,12 @@ const RootBookingManagement = () => {
                   <span className="text-gray-500">Status</span>
 
                   <StatusBadge status={selectedBooking.status} />
+                </div>
+                <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                  <span className="text-gray-500">Booked At</span>
+                  <span className="font-medium text-gray-800">
+                    {formatDateTime(selectedBooking.bookedAt || selectedBooking.booked_at)}
+                  </span>
                 </div>
               </div>
             </div>

@@ -18,4 +18,5 @@ export const ENDPOINTS = {
   dashboard: "/accounts/user/root-admin/dashboard-stats/", 
   root_admin_studio: "/studios/root-admin/studios/", 
   root_admin_studio_detail: "/studios/root-admin/studios/:id/",
+  sub_admin_booking: "/studios/sub-admin/bookings/", 
 };
