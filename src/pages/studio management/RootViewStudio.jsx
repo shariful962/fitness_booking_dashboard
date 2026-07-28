@@ -118,17 +118,7 @@ const RootViewStudio = () => {
           </div>
         </div>
 
-        {/* Top-right: action buttons */}
-        <div className="absolute top-4 right-4 flex items-center gap-2">
-          <button className="flex items-center gap-1.5 bg-white/90 hover:bg-white text-[#1b5e43] text-[13px] font-medium px-3.5 py-2 rounded-lg transition-colors shadow-sm border border-[#1b5e43]/30">
-            <CheckCircle size={13} />
-            Approve
-          </button>
-          <button className="flex items-center gap-1.5 bg-[#7b2d2d] hover:bg-[#6a2626] text-white text-[13px] font-medium px-3.5 py-2 rounded-lg transition-colors shadow-sm">
-            <PauseCircle size={13} />
-            Suspend
-          </button>
-        </div>
+     
       </div>
 
       {/* ── Two-column layout ── */}
@@ -145,46 +135,48 @@ const RootViewStudio = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-              {/* Primary Contact */}
               <div>
                 <p className="text-[12px] text-gray-400 font-medium mb-1">
-                  Primary Contact
+                  Studio Name
+                </p>
+                <p className="text-[13px] font-semibold text-gray-800">
+                  {studioName}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[12px] text-gray-400 font-medium mb-1">
+                  Location
+                </p>
+                <p className="text-[13px] font-semibold text-gray-800">
+                  {studioAddress}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[12px] text-gray-400 font-medium mb-1">
+                  Admin Name
                 </p>
                 <p className="text-[13px] font-semibold text-gray-800">
                   {adminName}
                 </p>
-                <p className="text-[12px] text-gray-500 mt-0.5">
+              </div>
+
+              <div>
+                <p className="text-[12px] text-gray-400 font-medium mb-1">
+                  Admin Email
+                </p>
+                <p className="text-[13px] font-semibold text-gray-800">
                   {adminEmail}
                 </p>
               </div>
 
-              {/* Phone Number */}
               <div>
                 <p className="text-[12px] text-gray-400 font-medium mb-1">
-                  Phone Number
+                  Admin Phone
                 </p>
                 <p className="text-[13px] font-semibold text-gray-800">
                   {adminPhone}
-                </p>
-              </div>
-
-              {/* Tax ID */}
-              <div>
-                <p className="text-[12px] text-gray-400 font-medium mb-1">
-                  Tax ID / EIN
-                </p>
-                <p className="text-[13px] font-semibold text-gray-800">
-                  {taxId}
-                </p>
-              </div>
-
-              {/* Operating Hours */}
-              <div>
-                <p className="text-[12px] text-gray-400 font-medium mb-1">
-                  Operating Hours
-                </p>
-                <p className="text-[13px] font-semibold text-gray-800">
-                  {operatingHours}
                 </p>
               </div>
             </div>

@@ -8,9 +8,13 @@ import { ENDPOINTS } from "../../api/endpoints";
 const Header = ({ setSidebarOpen }) => {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const rawUser = user?.user || user;
 
-  const displayName = user?.full_name || user?.name || user?.email || "User";
-  const profileImage = user?.image ? `${ENDPOINTS.mainURL}${user.image}` : null;
+  const displayName =
+    rawUser?.name ||
+    rawUser?.full_name ||
+    (rawUser?.email ? rawUser.email.split("@")[0] : "User");
+  const profileImage = rawUser?.image ? `${ENDPOINTS.mainURL}${rawUser.image}` : null;
 
   return (
     <div className="w-full h-[100px] flex items-center justify-center bg-Primary px-4">
