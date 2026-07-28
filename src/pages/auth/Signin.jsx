@@ -100,7 +100,7 @@ const Signin = () => {
       if (loggedInUser?.role === "root_admin") {
         navigate("/dashboard");
       } else {
-        navigate("/user");
+        navigate("/studio");
       }
     } catch (error) {
       // =========================================

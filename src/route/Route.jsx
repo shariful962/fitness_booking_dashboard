@@ -1,8 +1,3 @@
-
-
-
-
-
 import {
   createBrowserRouter,
   Navigate,
@@ -215,7 +210,7 @@ export const router = createBrowserRouter([
         ),
       },
           {
-        path: "studio/rootviewstudio",
+        path: "studio/rootviewstudio/:id",
         element: (
           <ProtectedRoute
             allowedRoles={[
@@ -281,7 +276,8 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute
             allowedRoles={[
-              "root_admin",
+              
+              "sub_admin",
             ]}
           >
             <CreateClass />
@@ -290,7 +286,7 @@ export const router = createBrowserRouter([
       },
 
       {
-        path: "class/viewclass",
+        path: "class/viewclass/:id",
         element: (
           <ProtectedRoute
             allowedRoles={[
@@ -304,11 +300,12 @@ export const router = createBrowserRouter([
       },
 
       {
-        path: "class/editclass",
+        path: "class/editclass/:id",
         element: (
           <ProtectedRoute
             allowedRoles={[
               "root_admin",
+              "sub_admin",
             ]}
           >
             <EditClass />

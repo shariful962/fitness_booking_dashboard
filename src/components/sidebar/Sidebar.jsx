@@ -165,7 +165,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       path: "/user",
       black: Icons.userdef,
       white: Icons.userWhite,
-      roles: ["root_admin", "sub_admin"],
+      roles: ["root_admin"],
     },
 
     {

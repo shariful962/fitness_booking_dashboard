@@ -1,43 +1,75 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pencil, Star, ImagePlus } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
+import { baseApi } from "../../api/baseApi";
+import { ENDPOINTS } from "../../api/endpoints";
 
-/* ─────────────────────────────────────────────
-   Static Data
-───────────────────────────────────────────── */
-const classData = {
-  title: "Reformer Pilates",
-  subtitle: "Intermediate to Advanced Level Core Conditioning",
-  rating: 4.9,
-  reviewCount: 245,
+const defaultClassData = {
+  title: "Class Details",
+  subtitle: "Loading class information...",
+  rating: 0,
+  reviewCount: 0,
   mainImage:
     "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&h=450&fit=crop",
-  thumbnails: [
-    "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=120&h=90&fit=crop",
-    "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=120&h=90&fit=crop",
-  ],
-  about:
-    "A dynamic and rigorous full-body workout using the Reformer apparatus. This class focuses on core strength, flexibility, and lean muscle development. Suitable for those with previous Reformer experience looking to deepen their practice and challenge their stability.",
-  sessions: [
-    {
-      time: "Today, 5:30 PM",
-      instructor: "with Sarah Jenkins",
-      booked: 8,
-      capacity: 8,
-    },
-    {
-      time: "Tomorrow, 7:00 AM",
-      instructor: "with Mike Ross",
-      booked: 6,
-      capacity: 8,
-    },
-    {
-      time: "Tomorrow, 6:00 PM",
-      instructor: "with Sarah Jenkins",
-      booked: 4,
-      capacity: 8,
-    },
-  ],
+  thumbnails: [],
+  about: "No description available.",
+  sessions: [],
+  category: "-",
+  price: "-",
+  location: "-",
+  instructor: "-",
+  date: "-",
+  time: "-",
+  duration: "-",
+  capacity: "-",
+  amenities: [],
+  whatToBring: [],
+};
+
+const buildImageUrl = (value) => {
+  if (!value) return null;
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (/^https?:\/\//i.test(trimmed) || /^data:/i.test(trimmed)) {
+      return trimmed;
+    }
+
+    const baseUrl = ENDPOINTS.mainURL?.replace(/\/$/, "");
+    if (!baseUrl) return trimmed;
+
+    return `${baseUrl}${trimmed.startsWith("/") ? "" : "/"}${trimmed}`;
+  }
+
+  if (typeof value === "object") {
+    return buildImageUrl(value.url || value.image || value.image_url || value.file || value.path || value.src);
+  }
+
+  return null;
+};
+
+const normalizeImages = (value) => {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => buildImageUrl(item))
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => buildImageUrl(item))
+      .filter(Boolean);
+  }
+
+  if (typeof value === "object") {
+    return normalizeImages(value.images || value.image_urls || value.urls || value.results || value.data);
+  }
+
+  return [];
 };
 
 /* ─────────────────────────────────────────────
@@ -61,7 +93,68 @@ const SessionBadge = ({ booked, capacity }) => {
 ───────────────────────────────────────────── */
 const ViewClass = () => {
   const navigate = useNavigate();
-  const [activeImage, setActiveImage] = useState(classData.mainImage);
+  const { id } = useParams();
+  const [classData, setClassData] = useState(defaultClassData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeImage, setActiveImage] = useState(defaultClassData.mainImage);
+
+  useEffect(() => {
+    const fetchClass = async () => {
+      if (!id) {
+        setError("No class ID provided.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const { data } = await baseApi.get(ENDPOINTS.class_detail.replace(":id", id));
+
+        const images = normalizeImages(
+          data?.images || data?.image_urls || data?.image || data?.image_url || data?.thumbnail || data?.thumbnails
+        );
+        const mainImage = images[0] || defaultClassData.mainImage;
+
+        setClassData({
+          title: data?.name || "Untitled class",
+          subtitle: data?.description || "No description available.",
+          rating: data?.rating || 0,
+          reviewCount: data?.review_count || 0,
+          mainImage,
+          thumbnails: images.slice(1),
+          about: data?.description || "No description available.",
+          sessions: [
+            {
+              time: `${data?.date || "-"} • ${data?.start_time || "-"}`,
+              instructor: data?.instructor_name ? `with ${data?.instructor_name}` : "Instructor not available",
+              booked: data?.capacity ? 0 : 0,
+              capacity: data?.capacity || 0,
+            },
+          ],
+          category: data?.category || "-",
+          price: data?.price || "-",
+          location: data?.location || "-",
+          instructor: data?.instructor_name || "-",
+          date: data?.date || "-",
+          time: data?.start_time || "-",
+          duration: data?.duration_minutes ? `${data.duration_minutes} min` : "-",
+          capacity: data?.capacity || "-",
+          amenities: Array.isArray(data?.amenities) ? data.amenities : [],
+          whatToBring: Array.isArray(data?.what_to_bring) ? data.what_to_bring : [],
+        });
+        setActiveImage(mainImage);
+        setError("");
+      } catch (err) {
+        console.error("Failed to fetch class details:", err);
+        setError("Unable to load class details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClass();
+  }, [id]);
 
   return (
     <div className="p-4 bg-Primary min-h-[calc(100vh-100px)] font-Inter">
@@ -77,7 +170,7 @@ const ViewClass = () => {
             </p>
           </div>
           <button
-            onClick={() => navigate("/class/editclass")}
+            onClick={() => navigate(`/class/editclass/${id}`)}
             className="flex items-center gap-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-[13px] font-medium px-3.5 py-2 rounded-lg transition-colors shadow-sm cursor-pointer"
           >
             <Pencil size={13} />
@@ -85,6 +178,12 @@ const ViewClass = () => {
           </button>
         </div>
 
+        {loading ? (
+          <div className="py-10 text-center text-gray-500">Loading class details...</div>
+        ) : error ? (
+          <div className="py-10 text-center text-red-500">{error}</div>
+        ) : (
+          <>
         {/* ── Two-column layout ── */}
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-5">
           {/* ── Left: Image Gallery ── */}
@@ -185,15 +284,83 @@ const ViewClass = () => {
           </div>
         </div>
 
-        {/* ── About this Class ── */}
-        <div className="mt-5 w-full lg:w-3/4 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-[15px] font-bold text-gray-800 mb-2">
-            About this Class
-          </h2>
-          <p className="text-[13px] text-gray-500 leading-relaxed">
-            {classData.about}
-          </p>
+        {/* ── Detailed Info ── */}
+        <div className="mt-5 grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+            <h2 className="text-[15px] font-bold text-gray-800 mb-2">
+              About this Class
+            </h2>
+            <p className="text-[13px] text-gray-500 leading-relaxed">
+              {classData.about}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+            <h2 className="text-[15px] font-bold text-gray-800 mb-3">
+              Class Details
+            </h2>
+            <div className="space-y-2 text-[13px] text-gray-600">
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Category</span>
+                <span className="font-medium text-gray-700">{classData.category}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Price</span>
+                <span className="font-medium text-gray-700">{classData.price}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Location</span>
+                <span className="font-medium text-gray-700">{classData.location}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Instructor</span>
+                <span className="font-medium text-gray-700">{classData.instructor}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Date</span>
+                <span className="font-medium text-gray-700">{classData.date}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Time</span>
+                <span className="font-medium text-gray-700">{classData.time}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Duration</span>
+                <span className="font-medium text-gray-700">{classData.duration}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-400">Capacity</span>
+                <span className="font-medium text-gray-700">{classData.capacity}</span>
+              </div>
+            </div>
+
+            {classData.amenities.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-[13px] font-semibold text-gray-800 mb-2">Amenities</h3>
+                <div className="flex flex-wrap gap-2">
+                  {classData.amenities.map((item, index) => (
+                    <span key={index} className="px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-[12px]">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {classData.whatToBring.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-[13px] font-semibold text-gray-800 mb-2">What to Bring</h3>
+                <ul className="list-disc list-inside text-[13px] text-gray-600 space-y-1">
+                  {classData.whatToBring.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -50,8 +50,7 @@ const ConfirmationModal = ({
 }) => {
   if (!open) return null;
 
-  // block / unblock text
-  const isBlock = action === "activate";
+  const isActivate = action === "activate";
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
@@ -77,7 +76,7 @@ const ConfirmationModal = ({
 
         {/* Title */}
         <h2 className="text-[32px] font-semibold text-center mt-5 text-[#1E293B]">
-          {isBlock ? "Block this user?" : "Unblock this user?"}
+          {isActivate ? "Activate this admin?" : "Deactivate this admin?"}
         </h2>
 
         {/* User Info */}
@@ -93,15 +92,9 @@ const ConfirmationModal = ({
 
         {/* Description */}
         <p className="text-center text-[#6B7280] text-[15px] leading-7 mt-5">
-          {isBlock
-            ? `Blocking this user will immediately revoke their access to the
-            studio app. They will no longer be able to book classes, view
-            schedules, or contact other members. Active bookings will be
-            canceled.`
-            : `Unblocking this user will restore their access to the
-            studio app. They will be able to book classes, view schedules,
-            and contact other members again. The user can continue using
-            all available features normally.`}
+          {isActivate
+            ? `Activating this admin will restore their access and allow them to manage administrative tasks again.`
+            : `Deactivating this admin will revoke their access and prevent them from signing in until reactivated.`}
         </p>
 
         {/* Buttons */}
@@ -116,12 +109,12 @@ const ConfirmationModal = ({
           <button
             onClick={onConfirm}
             className={`w-full h-[52px] rounded-[10px] font-medium text-white cursor-pointer ${
-              isBlock
-                ? "bg-[#BA1A1A] hover:bg-red-700"
-                : "bg-[#2C5945] hover:bg-[#234636]"
+              isActivate
+                ? "bg-[#2C5945] hover:bg-[#234636]"
+                : "bg-[#BA1A1A] hover:bg-red-700"
             }`}
           >
-            {isBlock ? "Confirm Block" : "Confirm Unblock"}
+            {isActivate ? "Confirm Activate" : "Confirm Deactivate"}
           </button>
         </div>
       </div>

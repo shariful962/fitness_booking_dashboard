@@ -1,7 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Info,
   Image,
+  User,
   CalendarDays,
   Tag,
   Trash2,
@@ -9,8 +10,23 @@ import {
   X,
   Plus,
   ChevronDown,
+  Search,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { baseApi } from "../../api/baseApi";
+import { ENDPOINTS } from "../../api/endpoints";
+
+// Fix for default marker icon in Leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
 
 /* ─────────────────────────────────────────────
    Section Card wrapper
@@ -60,6 +76,124 @@ const Label = ({ children }) => (
   </label>
 );
 
+const ALL_CATEGORIES = [
+  "Yoga",
+  "Pilates",
+  "Gym",
+  "Spa",
+  "Cycling",
+  "Boxing",
+  "Barre",
+  "Sauna",
+  "Dance",
+  "Meditation",
+];
+
+const AMENITIES = ["SHOWER", "Locker", "PARKING"];
+const WHAT_TO_BRING = ["Yoga mat", "Water", "Grip socks"];
+
+const LocationSearch = ({ onSelectLocation }) => {
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  useEffect(() => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`
+        );
+        const data = await response.json();
+        setSuggestions(data);
+        setShowSuggestions(true);
+      } catch (error) {
+        console.error("Error fetching locations:", error);
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const handleSelect = (place) => {
+    const lat = parseFloat(place.lat);
+    const lon = parseFloat(place.lon);
+    onSelectLocation(lat, lon, place.display_name);
+    setQuery("");
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  return (
+    <div className="relative w-full z-20 mb-3">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => query.length >= 3 && setShowSuggestions(true)}
+          placeholder="Search location (e.g., Gulshan, Dhaka)"
+          className="w-full border border-gray-200 rounded-lg pl-10 pr-3.5 py-2.5 text-[13px] text-gray-700 placeholder-gray-300 outline-none focus:border-[#1b5e43] focus:ring-2 focus:ring-[#1b5e43]/10 transition"
+        />
+        {loading && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="animate-spin h-4 w-4 border-2 border-[#1b5e43] border-t-transparent rounded-full"></div>
+          </div>
+        )}
+      </div>
+
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          {suggestions.map((place, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => handleSelect(place)}
+              className="w-full text-left px-4 py-2.5 hover:bg-gray-50 text-[13px] text-gray-700 border-b border-gray-100 last:border-0 flex items-start gap-2"
+            >
+              <MapPin size={14} className="text-gray-400 mt-0.5 flex-shrink-0" />
+              <span className="line-clamp-2">{place.display_name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const MapClickHandler = ({ onMapClick }) => {
+  useMapEvents({
+    click(e) {
+      onMapClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+};
+
+const MapComponent = ({ position, onMapClick }) => (
+  <div className="relative w-full h-64 rounded-xl overflow-hidden border border-gray-200 z-0">
+    <MapContainer center={position} zoom={15} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      />
+      <Marker position={position}>
+        <Popup>Selected Location</Popup>
+      </Marker>
+      <MapClickHandler onMapClick={onMapClick} />
+    </MapContainer>
+  </div>
+);
+
 /* ─────────────────────────────────────────────
    CreateClass Page
 ───────────────────────────────────────────── */
@@ -69,63 +203,226 @@ const CreateClass = () => {
 
   const [form, setForm] = useState({
     className: "",
-    studioLocation: "Downtown Studio - Room A",
-    instructor: "",
+    address: "",
     description: "",
     recurrence: "Weekly",
+    classDate: "",
     startTime: "06:00 PM",
     duration: "60 min",
     capacity: "25",
     dropInCredit: "02",
   });
+  const [latitude, setLatitude] = useState(23.8103);
+  const [longitude, setLongitude] = useState(90.4125);
+  const [mapPosition, setMapPosition] = useState([23.8103, 90.4125]);
 
-  const [tags, setTags] = useState(["Yoga"]);
-  const [tagInput, setTagInput] = useState("");
-  const [showTagInput, setShowTagInput] = useState(false);
+  const [selectedCats, setSelectedCats] = useState(["Yoga"]);
+  const [selectedAmenities, setSelectedAmenities] = useState(["SHOWER"]);
+  const [selectedBringItems, setSelectedBringItems] = useState(["Yoga mat"]);
 
-  const [uploadedFile, setUploadedFile] = useState({
-    name: "vinyasa_cover_final.jpg",
-    size: "2.4 MB",
-  });
+  const toggleCategory = (cat) => {
+    if (selectedCats.includes(cat)) {
+      setSelectedCats(selectedCats.filter((c) => c !== cat));
+    } else if (selectedCats.length < 10) {
+      setSelectedCats([...selectedCats, cat]);
+    }
+  };
+
+  const toggleAmenity = (amenity) => {
+    if (selectedAmenities.includes(amenity)) {
+      setSelectedAmenities(selectedAmenities.filter((a) => a !== amenity));
+    } else if (selectedAmenities.length < 10) {
+      setSelectedAmenities([...selectedAmenities, amenity]);
+    }
+  };
+
+  const toggleBringItem = (item) => {
+    if (selectedBringItems.includes(item)) {
+      setSelectedBringItems(selectedBringItems.filter((i) => i !== item));
+    } else if (selectedBringItems.length < 10) {
+      setSelectedBringItems([...selectedBringItems, item]);
+    }
+  };
+
+  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const instructorFileRef = useRef(null);
+  const [instructor, setInstructor] = useState({
+    image: null,
+    name: "",
+    designation: "",
+    file: null,
+  });
 
   /* handlers */
   const handleChange = (field, value) =>
     setForm((prev) => ({ ...prev, [field]: value }));
 
-  const addTag = () => {
-    const t = tagInput.trim();
-    if (t && !tags.includes(t)) setTags([...tags, t]);
-    setTagInput("");
-    setShowTagInput(false);
+  const handleSelectLocation = (lat, lng, address) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    setMapPosition([lat, lng]);
+    setForm((prev) => ({ ...prev, address }));
   };
 
-  const removeTag = (tag) => setTags(tags.filter((t) => t !== tag));
+  const handleMapClick = async (lat, lng) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    setMapPosition([lat, lng]);
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      );
+      const data = await response.json();
+      if (data && data.display_name) {
+        setForm((prev) => ({ ...prev, address: data.display_name }));
+      } else {
+        setForm((prev) => ({ ...prev, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` }));
+      }
+    } catch (error) {
+      console.error("Error getting address:", error);
+      setForm((prev) => ({ ...prev, address: `${lat.toFixed(6)}, ${lng.toFixed(6)}` }));
+    }
+  };
 
   const handleFileDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file)
-      setUploadedFile({
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) {
+      const newFiles = files.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
         name: file.name,
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      });
+      }));
+      setUploadedFiles((prev) => [...prev, ...newFiles]);
+    }
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file)
-      setUploadedFile({
+    const files = Array.from(e.target.files || []);
+    if (files.length) {
+      const newFiles = files.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
         name: file.name,
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-      });
+      }));
+      setUploadedFiles((prev) => [...prev, ...newFiles]);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const removeUploadedFile = (index) => {
+    setUploadedFiles((prev) => {
+      const removed = prev[index];
+      if (removed?.url) {
+        URL.revokeObjectURL(removed.url);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleInstructorFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setInstructor((prev) => ({ ...prev, image: url, file }));
+    }
+  };
+
+  const normalizeTimeTo24Hour = (value) => {
+    if (!value) return "";
+
+    const trimmed = String(value).trim();
+    const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?$/i);
+
+    if (!match) {
+      return trimmed;
+    }
+
+    let hours = Number(match[1]);
+    const minutes = match[2];
+    const seconds = match[3] || "00";
+    const meridiem = match[4]?.toLowerCase();
+
+    if (meridiem === "pm" && hours < 12) {
+      hours += 12;
+    }
+
+    if (meridiem === "am" && hours === 12) {
+      hours = 0;
+    }
+
+    return `${String(hours).padStart(2, "0")}:${minutes}:${seconds}`;
+  };
+
+  const parseDurationMinutes = (value) => {
+    const match = String(value || "").match(/(\d+)/);
+    return match ? Number(match[1]) : 60;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Create class:", { ...form, tags, uploadedFile });
-    navigate("/class");
+
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const formData = new FormData();
+
+      formData.append("name", form.className || "");
+      formData.append("location", form.address || "");
+      formData.append("latitude", String(latitude ?? ""));
+      formData.append("longitude", String(longitude ?? ""));
+      formData.append("category", selectedCats.join(", ") || "");
+      selectedCats.forEach((category) => {
+        formData.append("categories", category);
+      });
+      formData.append("description", form.description || "");
+      formData.append("recurrence", (form.recurrence || "Weekly").toLowerCase());
+      formData.append("date", form.classDate || "");
+      formData.append("start_time", normalizeTimeTo24Hour(form.startTime));
+      formData.append("duration_minutes", String(parseDurationMinutes(form.duration)));
+      formData.append("capacity", String(form.capacity || 0));
+      formData.append("price", String(form.dropInCredit || 0));
+      formData.append("what_to_bring", selectedBringItems.join(", ") || "");
+      formData.append("is_what_to_bring_required", selectedBringItems.length > 0 ? "true" : "false");
+      formData.append("instructor_name", instructor.name || "");
+      formData.append("instructor_designation", instructor.designation || "");
+
+      selectedAmenities.forEach((item) => {
+        formData.append("amenities", item);
+      });
+
+      uploadedFiles.forEach((uploaded) => {
+        formData.append("images", uploaded.file);
+      });
+
+      if (instructor.file) {
+        formData.append("instructor_image", instructor.file);
+      }
+
+      await baseApi.post(ENDPOINTS.classes, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      navigate("/class");
+    } catch (error) {
+      console.error("Error creating class:", error);
+      const backendMessage =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        "Unable to create class. Please try again.";
+      setSubmitError(backendMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -146,14 +443,21 @@ const CreateClass = () => {
         <button
           onClick={handleSubmit}
           type="button"
-          className="flex items-center gap-2 bg-[#1b5e43] hover:bg-[#154a35] text-white text-[13px] font-semibold px-4 py-2 rounded-lg shadow-sm transition cursor-pointer"
+          disabled={isSubmitting}
+          className="flex items-center gap-2 bg-[#1b5e43] hover:bg-[#154a35] text-white text-[13px] font-semibold px-4 py-2 rounded-lg shadow-sm transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
         >
           <span className="text-[14px]">✓</span>
-          Publish Class
+          {isSubmitting ? "Publishing..." : "Publish Class"}
         </button>
       </div>
 
       <form onSubmit={handleSubmit}>
+        {submitError ? (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-600">
+            {submitError}
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 lg:grid-cols-[2.5fr_1fr] gap-4">
           {/* ══════════════════════════════
               LEFT COLUMN
@@ -173,81 +477,86 @@ const CreateClass = () => {
                 />
               </div>
 
-              {/* Studio Location + Instructor */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div>
-                  <Label>Studio Location</Label>
-                  <CustomSelect
-                    value={form.studioLocation}
-                    onChange={(v) => handleChange("studioLocation", v)}
-                    placeholder="Select Studio..."
-                    options={[
-                      "Downtown Studio - Room A",
-                      "Downtown Studio - Room B",
-                      "Uptown Studio - Main Hall",
-                      "Westside Studio",
-                    ]}
-                  />
-                </div>
-                <div>
-                  <Label>Primary Instructor</Label>
-                  <CustomSelect
-                    value={form.instructor}
-                    onChange={(v) => handleChange("instructor", v)}
-                    placeholder="Select Instructor..."
-                    options={[
-                      "Sarah Jenkins",
-                      "Mike Ross",
-                      "Marcus Chen",
-                      "David Ross",
-                    ]}
-                  />
+              <div className="mb-4">
+                <Label>Location</Label>
+                <LocationSearch onSelectLocation={handleSelectLocation} />
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => handleChange("address", e.target.value)}
+                  placeholder="Address will auto-fill when you select a location"
+                  className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-[13px] text-gray-700 placeholder-gray-300 bg-gray-50 outline-none focus:border-[#1b5e43] focus:ring-2 focus:ring-[#1b5e43]/10 transition mb-3"
+                />
+                <MapComponent position={mapPosition} onMapClick={handleMapClick} />
+                <div className="mt-2 text-[11px] text-gray-500 flex items-center gap-2">
+                  <MapPin size={12} />
+                  <span>Lat: {latitude.toFixed(6)}, Lng: {longitude.toFixed(6)}</span>
                 </div>
               </div>
 
               {/* Category & Tags */}
               <div>
-                <Label>Category &amp; Tags</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="flex items-center gap-1 bg-[#e8f5f0] text-[#1b5e43] text-[12px] font-semibold px-3 py-1 rounded-full"
-                    >
-                      {tag}
+                <Label>Primary Categories</Label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {ALL_CATEGORIES.map((cat) => {
+                    const active = selectedCats.includes(cat);
+                    return (
                       <button
+                        key={cat}
                         type="button"
-                        onClick={() => removeTag(tag)}
-                        className="ml-0.5 hover:text-red-500 transition-colors"
+                        onClick={() => toggleCategory(cat)}
+                        className={`px-3 py-1 rounded-full text-[12px] font-medium border transition-all ${
+                          active
+                            ? "bg-[#1b5e43] text-white border-[#1b5e43]"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-[#1b5e43] hover:text-[#1b5e43]"
+                        }`}
                       >
-                        <X size={11} />
+                        {active && <X size={10} className="inline mr-1 mb-0.5" />} {cat}
                       </button>
-                    </span>
-                  ))}
+                    );
+                  })}
+                </div>
 
-                  {showTagInput ? (
-                    <input
-                      autoFocus
-                      type="text"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) =>
-                        e.key === "Enter" && (e.preventDefault(), addTag())
-                      }
-                      onBlur={addTag}
-                      placeholder="Tag name..."
-                      className="border border-[#1b5e43]/30 rounded-full px-3 py-0.5 text-[12px] outline-none w-24 focus:border-[#1b5e43]"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowTagInput(true)}
-                      className="flex items-center gap-1 border border-dashed border-gray-300 text-gray-500 hover:border-[#1b5e43] hover:text-[#1b5e43] text-[12px] font-medium px-3 py-1 rounded-full transition-colors"
-                    >
-                      <Plus size={11} />
-                      Add Tag
-                    </button>
-                  )}
+                <Label>Amenities</Label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {AMENITIES.map((amenity) => {
+                    const active = selectedAmenities.includes(amenity);
+                    return (
+                      <button
+                        key={amenity}
+                        type="button"
+                        onClick={() => toggleAmenity(amenity)}
+                        className={`px-3 py-1 rounded-full text-[12px] font-medium border transition-all ${
+                          active
+                            ? "bg-[#1b5e43] text-white border-[#1b5e43]"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-[#1b5e43] hover:text-[#1b5e43]"
+                        }`}
+                      >
+                        {active && <X size={10} className="inline mr-1 mb-0.5" />} {amenity}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <Label>What to bring</Label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {WHAT_TO_BRING.map((item) => {
+                    const active = selectedBringItems.includes(item);
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => toggleBringItem(item)}
+                        className={`px-3 py-1 rounded-full text-[12px] font-medium border transition-all ${
+                          active
+                            ? "bg-[#1b5e43] text-white border-[#1b5e43]"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-[#1b5e43] hover:text-[#1b5e43]"
+                        }`}
+                      >
+                        {active && <X size={10} className="inline mr-1 mb-0.5" />} {item}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </SectionCard>
@@ -262,6 +571,53 @@ const CreateClass = () => {
                   onChange={(e) => handleChange("description", e.target.value)}
                   placeholder="Describe what participants can expect..."
                   className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-[13px] text-gray-700 placeholder-gray-300 outline-none focus:border-[#1b5e43] focus:ring-2 focus:ring-[#1b5e43]/10 transition resize-none"
+                />
+              </div>
+            </SectionCard>
+
+            <SectionCard icon={Info} title="Instructor Information">
+              <div className="mb-4">
+                <Label>Instructor Image</Label>
+                <div
+                  onClick={() => instructorFileRef.current?.click()}
+                  className="w-full h-36 flex items-center justify-center cursor-pointer mb-3"
+                >
+                  <div className="w-28 h-28 rounded-full border border-gray-200 flex items-center justify-center overflow-hidden bg-white">
+                    {instructor.image ? (
+                      <img
+                        src={instructor.image}
+                        alt="Instructor"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User size={40} className="text-gray-400" />
+                    )}
+                  </div>
+                  <input
+                    ref={instructorFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleInstructorFileChange}
+                  />
+                </div>
+
+                <Label>Instructor Name</Label>
+                <input
+                  type="text"
+                  value={instructor.name}
+                  onChange={(e) => setInstructor((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g., Jane Doe"
+                  className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-[13px] text-gray-700 placeholder-gray-300 outline-none focus:border-[#1b5e43] focus:ring-2 focus:ring-[#1b5e43]/10 transition mb-3"
+                />
+
+                <Label>Instructor Designation</Label>
+                <input
+                  type="text"
+                  value={instructor.designation}
+                  onChange={(e) => setInstructor((p) => ({ ...p, designation: e.target.value }))}
+                  placeholder="e.g., Senior Yoga Instructor"
+                  className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-[13px] text-gray-700 placeholder-gray-300 outline-none focus:border-[#1b5e43] focus:ring-2 focus:ring-[#1b5e43]/10 transition"
                 />
               </div>
             </SectionCard>
@@ -303,32 +659,34 @@ const CreateClass = () => {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
                   onChange={handleFileChange}
                 />
               </div>
 
-              {/* Uploaded file preview */}
-              {uploadedFile && (
-                <div className="flex items-center gap-3 border border-gray-100 rounded-lg px-3 py-2.5 bg-gray-50">
-                  <div className="w-8 h-8 bg-gray-200 rounded-md flex items-center justify-center flex-shrink-0">
-                    <Image size={14} className="text-gray-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-semibold text-gray-700 truncate">
-                      {uploadedFile.name}
-                    </p>
-                    <p className="text-[11px] text-gray-400">
-                      {uploadedFile.size}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setUploadedFile(null)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+              {uploadedFiles.length > 0 && (
+                <div className="grid grid-cols-1 gap-3">
+                  {uploadedFiles.map((uploaded, index) => (
+                    <div key={`${uploaded.name}-${index}`} className="relative border border-gray-100 rounded-xl overflow-hidden bg-white">
+                      <img
+                        src={uploaded.url}
+                        alt={uploaded.name}
+                        className="w-full h-28 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeUploadedFile(index)}
+                        className="absolute top-2 right-2 rounded-full bg-white/90 p-1 text-gray-500 hover:text-red-500"
+                      >
+                        <X size={16} />
+                      </button>
+                      <div className="p-3 text-[12px] text-gray-600">
+                        <p className="truncate font-semibold">{uploaded.name}</p>
+                        <p className="text-gray-400">{uploaded.size}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </SectionCard>
@@ -356,26 +714,37 @@ const CreateClass = () => {
                 </div>
               </div>
 
-              {/* Start Time + Duration */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              {/* Class Date + Start Time + Duration */}
+              <div className="grid grid-cols-1 gap-3 mb-4">
                 <div>
-                  <Label>Start Time</Label>
+                  <Label>Class Date</Label>
                   <input
-                    type="text"
-                    value={form.startTime}
-                    onChange={(e) => handleChange("startTime", e.target.value)}
-                    placeholder="06:00 PM"
+                    type="date"
+                    value={form.classDate}
+                    onChange={(e) => handleChange("classDate", e.target.value)}
                     className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-[13px] text-gray-700 outline-none focus:border-[#1b5e43] focus:ring-2 focus:ring-[#1b5e43]/10 transition"
                   />
                 </div>
-                <div>
-                  <Label>Duration</Label>
-                  <CustomSelect
-                    value={form.duration}
-                    onChange={(v) => handleChange("duration", v)}
-                    placeholder="Select..."
-                    options={["30 min", "45 min", "60 min", "75 min", "90 min"]}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Start Time</Label>
+                    <input
+                      type="text"
+                      value={form.startTime}
+                      onChange={(e) => handleChange("startTime", e.target.value)}
+                      placeholder="06:00 PM"
+                      className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-[13px] text-gray-700 outline-none focus:border-[#1b5e43] focus:ring-2 focus:ring-[#1b5e43]/10 transition"
+                    />
+                  </div>
+                  <div>
+                    <Label>Duration</Label>
+                    <CustomSelect
+                      value={form.duration}
+                      onChange={(v) => handleChange("duration", v)}
+                      placeholder="Select..."
+                      options={["30 min", "45 min", "60 min", "75 min", "90 min"]}
+                    />
+                  </div>
                 </div>
               </div>
 

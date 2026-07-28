@@ -1,0 +1,238 @@
+import React, { useEffect, useState } from "react";
+import { Search } from "lucide-react";
+import Paginations from "../../common/Paginations";
+import { baseApi } from "../../api/baseApi";
+import { ENDPOINTS } from "../../api/endpoints";
+
+const formatTime = (value) => {
+  if (!value) return "-";
+
+  const [hours = "0", minutes = "00"] = String(value).split(":");
+  const hour = Number(hours);
+
+  if (Number.isNaN(hour)) return value;
+
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const formattedHour = hour % 12 || 12;
+
+  return `${formattedHour}:${minutes} ${suffix}`;
+};
+
+const mapClassData = (item) => ({
+  id: item.id,
+  title: item.name || "-",
+  subtitle: [
+    item.category,
+    item.duration_minutes ? `${item.duration_minutes}m` : null,
+    item.credit ? `${item.credit} Cr` : null,
+  ]
+    .filter(Boolean)
+    .join(" • "),
+  instructor: item.instructor_name || "-",
+  studio: item.studio_name || "-",
+  date: item.date || "-",
+  timeStart: formatTime(item.start_time),
+  active: item.is_active ?? true,
+});
+
+/* ─────────────────────────────────────────────
+   Class Management Page
+───────────────────────────────────────────── */
+const RootClassManagement = () => {
+  const navigate = useNavigate();
+  const [classes, setClasses] = useState(
+    initialClasses.map((cls) => ({ ...cls, active: true }))
+  );
+  const [search, setSearch] = useState("");
+
+    // ✅ pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const perPage = 5;
+
+  const handleToggle = (index) => {
+    setClasses((prev) =>
+      prev.map((cls, i) => (i === index ? { ...cls, active: !cls.active } : cls))
+    );
+  };
+
+
+
+  const filtered = classes.filter(
+    (c) =>
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      c.instructor.toLowerCase().includes(search.toLowerCase()) ||
+      c.studio.toLowerCase().includes(search.toLowerCase()),
+  );
+
+    // ✅ pagination logic
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / perPage);
+
+  const startIndex = (currentPage - 1) * perPage;
+  const currentData = filtered.slice(startIndex, startIndex + perPage);
+
+  // reset page when search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  return (
+    <div className="p-4 bg-Primary min-h-[calc(100vh-100px)]">
+    
+
+      <div className="bg-white shadow-custom rounded-[10px] overflow-hidden min-h-[calc(100vh-135px)] font-Inter">
+        {/* ── Header ── */}
+        <div className="bg-[#1b5e43] px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              Class Schedule Management
+            </h1>
+            <p className="text-green-200 text-sm mt-1">
+              Manage your studio's upcoming classes, instructors, and capacity.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Search */}
+            <div className="relative">
+              <Search
+                size={15}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60"
+              />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search classes..."
+                className="bg-white/10 border border-white/20 text-white placeholder-white/50 rounded-md pl-9 pr-4 py-2 text-sm outline-none focus:bg-white/20 focus:border-white/40 transition w-48"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Table ── */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-[13px] text-gray-600">
+                <th className="py-3.5 px-5 font-semibold">S.ID</th>
+                <th className="py-3.5 px-5 font-semibold">Class Title</th>
+                <th className="py-3.5 px-5 font-semibold">Instructor</th>
+                <th className="py-3.5 px-5 font-semibold">Studio Name</th>
+                <th className="py-3.5 px-5 font-semibold">Date &amp; Time</th>
+                <th className="py-3.5 px-5 font-semibold text-center">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="text-[13px]">
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="py-12 text-center text-gray-400 text-sm"
+                  >
+                    Loading classes...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="py-12 text-center text-red-500 text-sm"
+                  >
+                    {error}
+                  </td>
+                </tr>
+              ) : currentData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="py-12 text-center text-gray-400 text-sm"
+                  >
+                    No classes found.
+                  </td>
+                </tr>
+              ) : (
+                currentData.map((cls, index) => (
+                  <tr
+                    key={index}
+                    className="border-b border-gray-100 hover:bg-gray-50/60 transition-colors"
+                  >
+                    {/* S.ID */}
+                    <td className="py-3.5 px-5 text-gray-500 font-medium">
+                      {cls.id}
+                    </td>
+
+                    {/* Class Title */}
+                    <td className="py-3.5 px-5">
+                      <div>
+                        <p className="font-semibold text-gray-800">
+                          {cls.title}
+                        </p>
+                        <p className="text-[12px] text-gray-400 mt-0.5">
+                          {cls.subtitle}
+                        </p>
+                      </div>
+                    </td>
+
+                    {/* Instructor */}
+                    <td className="py-3.5 px-5 text-gray-700">
+                      {cls.instructor}
+                    </td>
+
+                    {/* Studio Name */}
+                    <td className="py-3.5 px-5">
+                      <span className="text-[#1b5e43] font-medium hover:underline cursor-pointer">
+                        {cls.studio}
+                      </span>
+                    </td>
+
+                    {/* Date & Time */}
+                    <td className="py-3.5 px-5">
+                      <p className="text-gray-700 font-medium">{cls.date}</p>
+                      <p className="text-[12px] text-gray-400 mt-0.5">
+                        {cls.timeStart} - {cls.timeEnd}
+                      </p>
+                    </td>
+
+                    {/* Action */}
+                    <td className="py-3.5 px-5">
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={() => handleToggle(startIndex + index)}
+                          className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#1b5e43]/20 cursor-pointer"
+                          style={{ backgroundColor: cls.active ? "#1b5e43" : "#d1d5db" }}
+                          aria-label="Toggle class status"
+                        >
+                          <span
+                            className="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+                            style={{ transform: cls.active ? "translateX(1.25rem)" : "translateX(0.125rem)" }}
+                          />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+         <div className="px-5 py-4 border-t">
+          <Paginations
+            totalItems={totalItems}
+            currentPage={currentPage}
+            perPage={perPage}
+            onPageChange={(event, value) => setCurrentPage(value)}
+          />
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default RootClassManagement;
+
+
+

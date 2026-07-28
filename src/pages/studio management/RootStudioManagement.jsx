@@ -2,126 +2,18 @@ import React, { useEffect, useState } from "react";
 import { Eye, Search } from "lucide-react";
 import { useNavigate } from "react-router";
 import Paginations from "../../common/Paginations";
+import { baseApi } from "../../api/baseApi";
+import { ENDPOINTS } from "../../api/endpoints";
 
-
-
-/* ── Studio Data ── */
-const STUDIOS_DATA = [
-  {
-    id: "#ST-1043",
-    name: "Aura Yoga",
-    image:
-      "https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=80&h=80&fit=crop",
-    owner: "Sarah Jenkins",
-    category: "Yoga",
-    city: "Seattle, WA",
-    status: "Approved",
-    classes: 24,
-  },
-  {
-    id: "#ST-1044",
-    name: "Velocity Cycle",
-    image:
-      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=80&h=80&fit=crop",
-    owner: "Marcus Chen",
-    category: "Cycling",
-    city: "Austin, TX",
-    status: "Pending",
-    classes: 0,
-  },
-  {
-    id: "#ST-1038",
-    name: "Iron Core",
-    image:
-      "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=80&h=80&fit=crop",
-    owner: "David Ross",
-    category: "Strength",
-    city: "Denver, CO",
-    status: "Suspended",
-    classes: 0,
-  },
-  {
-    id: "#ST-1045",
-    name: "Zenith Pilates",
-    image:
-      "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=80&h=80&fit=crop",
-    owner: "Elena Rostova",
-    category: "Pilates",
-    city: "Miami, FL",
-    status: "Rejected",
-    classes: 0,
-  },
-  {
-    id: "#ST-1046",
-    name: "Power House",
-    image:
-      "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=80&h=80&fit=crop",
-    owner: "James Smith",
-    category: "Strength",
-    city: "Chicago, IL",
-    status: "Approved",
-    classes: 15,
-  },
-  {
-    id: "#ST-1047",
-    name: "Flex Studio",
-    image:
-      "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=80&h=80&fit=crop",
-    owner: "Emma Watson",
-    category: "Pilates",
-    city: "Dallas, TX",
-    status: "Pending",
-    classes: 0,
-  },
-  {
-    id: "#ST-1048",
-    name: "Mind & Body",
-    image:
-      "https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=80&h=80&fit=crop",
-    owner: "Olivia Brown",
-    category: "Yoga",
-    city: "Phoenix, AZ",
-    status: "Approved",
-    classes: 10,
-  },
-  {
-    id: "#ST-1049",
-    name: "Spin Nation",
-    image:
-      "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=80&h=80&fit=crop",
-    owner: "Daniel Lee",
-    category: "Cycling",
-    city: "Boston, MA",
-    status: "Rejected",
-    classes: 0,
-  },
-];
-
-/* ── Category Badge ── */
-const CategoryBadge = ({ category }) => {
-  const styles = {
-    Yoga: "bg-purple-50 text-purple-600",
-    Cycling: "bg-blue-50 text-blue-600",
-    Strength: "bg-orange-50 text-orange-600",
-    Pilates: "bg-pink-50 text-pink-600",
-  };
-
-  return (
-    <span
-      className={`inline-block px-3 py-1 rounded-full text-[11px] font-medium ${
-        styles[category] || "bg-gray-100 text-gray-500"
-      }`}
-    >
-      {category}
-    </span>
-  );
-};
+const ROOT_STUDIO_API = ENDPOINTS.root_admin_studio;
 
 const RootStudioManagement = () => {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
-  const [studios, setStudios] = useState(STUDIOS_DATA);
+  const [studios, setStudios] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   /* ── Pagination State ── */
   const [currentPage, setCurrentPage] = useState(1);
@@ -132,7 +24,7 @@ const RootStudioManagement = () => {
     const matchesSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.owner.toLowerCase().includes(search.toLowerCase()) ||
-      s.city.toLowerCase().includes(search.toLowerCase());
+      s.full_address.toLowerCase().includes(search.toLowerCase());
 
     return matchesSearch;
   });
@@ -147,6 +39,37 @@ const RootStudioManagement = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [search]);
+
+  useEffect(() => {
+    const fetchStudios = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const res = await baseApi.get(ROOT_STUDIO_API);
+        const mapped = (res.data?.studios || []).map((item) => ({
+          id: `#ST-${item.id}`,
+          name: item.name || "-",
+          owner: item.admin?.name || "-",
+          full_address: item.full_address || "",
+          classes: item.active_classes ?? 0,
+          raw: item,
+        }));
+        setStudios(mapped);
+      } catch (err) {
+        console.error("Failed to load studios:", err);
+        setError(
+          err?.response?.data?.detail ||
+            err?.response?.data?.message ||
+            "Unable to load studios. Please try again.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudios();
+  }, []);
 
   return (
     <div className="p-4 bg-Primary min-h-[calc(100vh-100px)] px-4">
@@ -205,14 +128,6 @@ const RootStudioManagement = () => {
                     </th>
 
                     <th className="py-3.5 px-5 font-medium whitespace-nowrap">
-                      Category
-                    </th>
-
-                    <th className="py-3.5 px-5 font-medium whitespace-nowrap">
-                      City
-                    </th>
-
-                    <th className="py-3.5 px-5 font-medium whitespace-nowrap">
                       Classes
                     </th>
 
@@ -223,12 +138,21 @@ const RootStudioManagement = () => {
                 </thead>
 
                 <tbody className="text-[13px]">
-                  {paginatedStudios.length === 0 ? (
+                  {loading ? (
                     <tr>
-                      <td
-                        colSpan={7}
-                        className="py-12 text-center text-gray-400"
-                      >
+                      <td colSpan={5} className="py-12 text-center text-gray-400">
+                        Loading studios...
+                      </td>
+                    </tr>
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-red-500">
+                        {error}
+                      </td>
+                    </tr>
+                  ) : paginatedStudios.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-gray-400">
                         No studios found.
                       </td>
                     </tr>
@@ -240,37 +164,19 @@ const RootStudioManagement = () => {
                       >
                         {/* ID */}
                         <td className="py-3 px-5 text-gray-500 whitespace-nowrap">
-                          {studio.id}
+                          {startIndex + index + 1}
                         </td>
 
                         {/* Studio */}
                         <td className="py-3 px-5 whitespace-nowrap">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={studio.image}
-                              alt={studio.name}
-                              className="w-9 h-9 rounded-lg object-cover flex-shrink-0"
-                            />
-
-                            <span className="font-semibold text-gray-800">
-                              {studio.name}
-                            </span>
-                          </div>
+                          <span className="font-semibold text-gray-800">
+                            {studio.name}
+                          </span>
                         </td>
 
                         {/* Owner */}
                         <td className="py-3 px-5 text-gray-600 whitespace-nowrap">
                           {studio.owner}
-                        </td>
-
-                        {/* Category */}
-                        <td className="py-3 px-5 whitespace-nowrap">
-                          <CategoryBadge category={studio.category} />
-                        </td>
-
-                        {/* City */}
-                        <td className="py-3 px-5 text-gray-600 whitespace-nowrap">
-                          {studio.city}
                         </td>
 
                         {/* Classes */}
@@ -284,7 +190,7 @@ const RootStudioManagement = () => {
                         <td className="py-3 px-5 whitespace-nowrap">
                           <div className="flex items-center justify-center text-gray-400">
                             <button
-                              onClick={() => navigate("/studio/rootviewstudio")}
+                              onClick={() => navigate(`/studio/rootviewstudio/${studio.raw.id}`)}
                               className="hover:text-gray-600 transition-colors cursor-pointer"
                             >
                               <Eye size={17} strokeWidth={1.5} />
