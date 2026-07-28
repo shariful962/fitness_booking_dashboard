@@ -46,6 +46,7 @@ const SubClassManagement = () => {
           date: item.date || "-",
           timeStart: formatTime(item.start_time),
           timeEnd: calculateEndTime(item.start_time, item.duration_minutes),
+          active: item.is_active ?? true,
         }));
 
         setClasses(mapped);
@@ -70,6 +71,45 @@ const SubClassManagement = () => {
       console.error("Failed to delete class:", err);
       setError("Unable to delete class.");
     }
+  };
+
+  const [togglingId, setTogglingId] = useState(null);
+
+  const handleToggleActive = async (id, currentValue) => {
+    setTogglingId(id);
+    setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, active: !currentValue } : c)));
+
+    try {
+      const url = ENDPOINTS.class_detail.replace(":id", id);
+      await baseApi.patch(url, { is_active: !currentValue });
+    } catch (err) {
+      console.error("Failed to toggle class active state:", err);
+      setError("Unable to update class status.");
+      setClasses((prev) => prev.map((c) => (c.id === id ? { ...c, active: currentValue } : c)));
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  // Confirmation modal state for toggling
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState(null);
+
+  const requestToggle = (cls) => {
+    setPendingToggle({ id: cls.id, active: cls.active, title: cls.title });
+    setConfirmOpen(true);
+  };
+
+  const confirmToggle = () => {
+    if (!pendingToggle) return;
+    handleToggleActive(pendingToggle.id, pendingToggle.active);
+    setPendingToggle(null);
+    setConfirmOpen(false);
+  };
+
+  const cancelToggle = () => {
+    setPendingToggle(null);
+    setConfirmOpen(false);
   };
 
 
@@ -192,12 +232,26 @@ const SubClassManagement = () => {
                     <td className="py-3.5 px-5">
                       <div className="flex items-center justify-center gap-3 text-gray-400">
                         <button
+                          onClick={() => requestToggle(cls)}
+                          disabled={togglingId === cls.id}
+                          title={cls.active ? "Deactivate" : "Activate"}
+                          className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer disabled:opacity-60"
+                          style={{ backgroundColor: cls.active ? "#1b5e43" : "#d1d5db" }}
+                        >
+                          <span
+                            className="inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform"
+                            style={{ transform: cls.active ? "translateX(1.25rem)" : "translateX(0.125rem)" }}
+                          />
+                        </button>
+
+                        <button
                           onClick={() => navigate(`/class/viewclass/${cls.id}`)}
                           title="View"
                           className="hover:text-[#1b5e43] transition-colors cursor-pointer"
                         >
                           <Eye size={18} strokeWidth={1.5} />
                         </button>
+
                         <button
                           title="Remove"
                           onClick={() => handleRemove(cls.id)}
@@ -222,6 +276,21 @@ const SubClassManagement = () => {
             onPageChange={(event, value) => setCurrentPage(value)}
           />
         </div>
+
+        {/* Confirmation Modal */}
+        {confirmOpen && pendingToggle && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={cancelToggle} />
+            <div className="relative bg-white rounded-lg shadow-lg w-[420px] p-6">
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Change</h3>
+              <p className="text-sm text-gray-600 mt-2">Are you sure you want to {pendingToggle.active ? "deactivate" : "activate"} the class <strong className="text-gray-800">{pendingToggle.title}</strong>?</p>
+              <div className="mt-4 flex justify-end gap-3">
+                <button onClick={cancelToggle} className="px-4 py-2 rounded-md bg-gray-100 text-sm text-gray-700">Cancel</button>
+                <button onClick={confirmToggle} disabled={togglingId === pendingToggle.id} className="px-4 py-2 rounded-md bg-[#1b5e43] text-white text-sm disabled:opacity-60">Confirm</button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
