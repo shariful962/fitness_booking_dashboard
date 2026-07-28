@@ -396,6 +396,9 @@ const CreateClass = () => {
       formData.append("instructor_name", instructor.name || "");
       formData.append("instructor_designation", instructor.designation || "");
 
+      // Always mark created classes as active
+      formData.append("is_active", "true");
+
       selectedAmenities.forEach((item) => {
         formData.append("amenities", item);
       });

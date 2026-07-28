@@ -18,6 +18,8 @@ const RootViewStudio = () => {
   const navigate = useNavigate();
   const { id } = useParams();
 
+  const [selectedVideo, setSelectedVideo] = useState(null);
+
   const [studio, setStudio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -76,8 +78,18 @@ const RootViewStudio = () => {
   const adminPhone = studio.admin?.phone || "-";
   const taxId = studio.tax_id || "-";
   const operatingHours = studio.operating_hours || "Not specified";
-  const videos = studio.videos || [];
-  const photos = studio.photos || [];
+  // Normalize media coming from API: some responses use `images` and nested keys
+  const videos = (studio.videos || []).map((v) => {
+    if (!v) return null;
+    if (typeof v === "string") return { id: null, url: v, thumbnail: null };
+    return { id: v.id ?? null, url: v.video ?? v.url ?? null, thumbnail: v.thumbnail ?? null };
+  }).filter(Boolean);
+
+  const photos = (studio.images || studio.photos || []).map((p) => {
+    if (!p) return null;
+    if (typeof p === "string") return { id: null, url: p };
+    return { id: p.id ?? null, url: p.image ?? p.url ?? null };
+  }).filter(Boolean);
   const classes = studio.classes || [];
 
   return (
@@ -195,8 +207,9 @@ const RootViewStudio = () => {
               <div className="grid grid-cols-2 gap-3">
                 {videos.map((video, i) => (
                   <div
-                    key={i}
+                    key={video.id ?? i}
                     className="relative rounded-xl overflow-hidden group cursor-pointer"
+                  onClick={() => video.url && setSelectedVideo(video.url)}
                   >
                     {video.thumbnail ? (
                       <img
@@ -204,6 +217,8 @@ const RootViewStudio = () => {
                         alt={`Video ${i + 1}`}
                         className="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-300"
                       />
+                    ) : video.url ? (
+                      <video src={video.url} className="w-full h-28 object-cover" controls preload="metadata" onClick={(e) => e.stopPropagation()} />
                     ) : (
                       <div className="w-full h-28 bg-gray-300 flex items-center justify-center">
                         <Video size={24} className="text-gray-400" />
@@ -228,6 +243,16 @@ const RootViewStudio = () => {
               </div>
             )}
           </div>
+          {/* Video Modal */}
+          {selectedVideo && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/60" onClick={() => setSelectedVideo(null)} />
+              <div className="relative w-full max-w-3xl p-4">
+                <video src={selectedVideo} controls autoPlay className="w-full max-h-[80vh] rounded-lg bg-black" />
+                <button onClick={() => setSelectedVideo(null)} className="absolute top-3 right-3 bg-white/80 rounded-full p-2">✕</button>
+              </div>
+            </div>
+          )}
 
           {/* Studio Photos Card */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -242,12 +267,12 @@ const RootViewStudio = () => {
               <div className="grid grid-cols-3 gap-3">
                 {photos.map((photo, i) => (
                   <div
-                    key={i}
+                    key={photo.id ?? i}
                     className="relative rounded-xl overflow-hidden group cursor-pointer"
                   >
-                    {photo.image || photo ? (
+                    {photo.url ? (
                       <img
-                        src={photo.image || photo}
+                        src={photo.url}
                         alt={`Photo ${i + 1}`}
                         className="w-full h-24 object-cover group-hover:scale-105 transition-transform duration-300"
                       />

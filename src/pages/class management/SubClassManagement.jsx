@@ -95,6 +95,10 @@ const SubClassManagement = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingToggle, setPendingToggle] = useState(null);
 
+  // Confirmation modal state for deletion
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+
   const requestToggle = (cls) => {
     setPendingToggle({ id: cls.id, active: cls.active, title: cls.title });
     setConfirmOpen(true);
@@ -110,6 +114,23 @@ const SubClassManagement = () => {
   const cancelToggle = () => {
     setPendingToggle(null);
     setConfirmOpen(false);
+  };
+
+  const requestDelete = (cls) => {
+    setPendingDelete({ id: cls.id, title: cls.title });
+    setConfirmDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    await handleRemove(pendingDelete.id);
+    setPendingDelete(null);
+    setConfirmDeleteOpen(false);
+  };
+
+  const cancelDelete = () => {
+    setPendingDelete(null);
+    setConfirmDeleteOpen(false);
   };
 
 
@@ -254,7 +275,7 @@ const SubClassManagement = () => {
 
                         <button
                           title="Remove"
-                          onClick={() => handleRemove(cls.id)}
+                          onClick={() => requestDelete(cls)}
                           className="hover:text-red-500 transition-colors cursor-pointer"
                         >
                           <XCircle size={18} strokeWidth={1.5} />
@@ -287,6 +308,21 @@ const SubClassManagement = () => {
               <div className="mt-4 flex justify-end gap-3">
                 <button onClick={cancelToggle} className="px-4 py-2 rounded-md bg-gray-100 text-sm text-gray-700">Cancel</button>
                 <button onClick={confirmToggle} disabled={togglingId === pendingToggle.id} className="px-4 py-2 rounded-md bg-[#1b5e43] text-white text-sm disabled:opacity-60">Confirm</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {confirmDeleteOpen && pendingDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={cancelDelete} />
+            <div className="relative bg-white rounded-lg shadow-lg w-[420px] p-6">
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+              <p className="text-sm text-gray-600 mt-2">Are you sure you want to delete the class <strong className="text-gray-800">{pendingDelete.title}</strong>? This action cannot be undone.</p>
+              <div className="mt-4 flex justify-end gap-3">
+                <button onClick={cancelDelete} className="px-4 py-2 rounded-md bg-gray-100 text-sm text-gray-700 cursor-pointer">Cancel</button>
+                <button onClick={confirmDelete} className="px-4 py-2 rounded-md bg-red-500 text-white text-sm cursor-pointer">Delete</button>
               </div>
             </div>
           </div>

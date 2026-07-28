@@ -184,17 +184,17 @@ const SubBookingManagement = () => {
             <tbody className="text-[13px]">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-10 text-center text-gray-400">
+                  <td colSpan={7} className="py-10 text-center text-gray-400">
                     No bookings found.
                   </td>
                 </tr>
               ) : (
                 paginatedData.map((booking, index) => (
                   <tr
-                    key={index}
+                    key={booking.id || startIndex + index}
                     className="border-b border-gray-100 hover:bg-gray-50/50"
                   >
-                    <td className="py-3 px-5 text-gray-500">{booking.id}</td>
+                    <td className="py-3 px-5 text-gray-500">{startIndex + index + 1}</td>
 
                     <td className="py-3 px-5">
                       <div className="flex items-center gap-2.5">

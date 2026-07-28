@@ -440,7 +440,11 @@ const handleSubmit = (e) => {
         console.log(pair[0], pair[1]);
       }
 
-      const res = await baseApi.patch(ENDPOINTS.studio, fd);
+      const res = await baseApi.patch(ENDPOINTS.studio, fd, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
       console.log("Studio patched:", res.data);
 
